@@ -4,7 +4,6 @@ interface ElevatorRequest { floor: number, direction: Direction }
 
 class ElevatorSystem {
     private elevators: Array<Elevator>;
-    // public elevators: Array<Elevator>;
     maxFloor: number
     constructor(elevators: number, maxFloor: number) {
         this.elevators = []
@@ -18,11 +17,11 @@ class ElevatorSystem {
         return this.elevators.length;
     }
 
-    pushButtonInElevator(elevator: number, button: number) {
+    public pushButtonInElevator(elevator: number, button: number) {
         this.elevators.filter(e => e.id == elevator)[0].pushInternalButton(button);
     }
 
-    pickup(floor: number, dir: number) {
+    public pickup(floor: number, dir: number) {
         let direction: Direction = dir >= 0 ? "up" : "down";
 
         if (this.elevators.some(e => e.externalRequests.some(er => er.floor == floor && er.direction == direction))) {
@@ -74,7 +73,7 @@ class ElevatorSystem {
         return false;
     }
 
-    update(elevatorNumber: number, currentFloor: number, targetFloor: number) {
+    public update(elevatorNumber: number, currentFloor: number, targetFloor: number) {
         if (currentFloor > this.maxFloor || currentFloor < 0) {
             throw new RangeError(`Invalid current floor (${currentFloor}) for elevator ${elevatorNumber}`)
         }
@@ -85,11 +84,11 @@ class ElevatorSystem {
         this.elevators.filter(e => e.id == elevatorNumber)[0].targetFloor = targetFloor;
     }
 
-    step() {
+    public step() {
         this.elevators.forEach(e => e.timeStep())
     }
 
-    status(): [elevatorID: number, currentFloor: number, targetFloor: number][] {
+    public status(): [elevatorID: number, currentFloor: number, targetFloor: number][] {
         return this.elevators.map(e => [e.id, e.currentFloor, e.targetFloor])
     }
 
@@ -116,10 +115,10 @@ class Elevator {
     private _system: ElevatorSystem;
     private _prevMove: Direction;
 
-    internalRequests: Array<ElevatorRequest>;
-    externalRequests: Array<ElevatorRequest>;
+    public internalRequests: Array<ElevatorRequest>;
+    public externalRequests: Array<ElevatorRequest>;
 
-    hasOpenDoor: boolean;
+    public hasOpenDoor: boolean;
 
     private _currentFloor: number;
     private _targetFloor: number;
@@ -467,6 +466,7 @@ class ElevatorSystemVisualizer {
         return floor;
         
     }
+    
     private getHalfFloorFromClick(y: number): number {
         return -(y - (this._system.maxFloor - this.getFloorFromClick(y)) * (this.config.height + this.config.margin) - this.config.height / 2);
     }
