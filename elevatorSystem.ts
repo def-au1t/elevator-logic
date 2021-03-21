@@ -4,16 +4,16 @@ interface ElevatorRequest { floor: number, direction: Direction }
 
 class ElevatorSystem {
     private elevators: Array<Elevator>;
-    maxFloor: number
+    maxFloor: number;
     constructor(elevators: number, maxFloor: number) {
-        this.elevators = []
+        this.elevators = [];
         for (let i = 0; i < elevators; i++) {
-            this.elevators.push(new Elevator(this, i))
+            this.elevators.push(new Elevator(this, i));
         }
         this.maxFloor = maxFloor;
     }
 
-    get elevatorsNumber(): number {
+    get elevatorsCount(): number {
         return this.elevators.length;
     }
 
@@ -23,91 +23,91 @@ class ElevatorSystem {
 
     public pickup(floor: number, dir: number) {
         let direction: Direction = dir >= 0 ? "up" : "down";
+        let request: ElevatorRequest = { floor, direction };
 
-        if (this.elevators.some(e => e.externalRequests.some(er => er.floor == floor && er.direction == direction))) {
+        if (this.elevators.some(e => e.hasAlreadyExternalRequest(request))) {
             console.log("There is already similar request!");
             return;
         }
 
-        if (this.elevators.some(e => e.requestsNumber == 0)) {
+        if (this.elevators.some(e => e.requestsCount == 0)) {
             this.elevators
-                .filter(e => e.requestsNumber == 0)[0]
+                .filter(e => e.requestsCount == 0)[0]
                 .addExternalRequest({ floor, direction });
             return;
         }
 
         if (direction == "down") {
-            if (this.sendToApproachingFromUp({ floor, direction })) return;
-            if (this.sendToApproachingFromBottom({ floor, direction })) return;
+            if (this.checkAndSendToApproachingFromUp({ floor, direction })) return;
+            if (this.checkAndSendToApproachingFromBottom({ floor, direction })) return;
         }
         else {
-            if (this.sendToApproachingFromBottom({ floor, direction })) return;
-            if (this.sendToApproachingFromUp({ floor, direction })) return;
+            if (this.checkAndSendToApproachingFromBottom({ floor, direction })) return;
+            if (this.checkAndSendToApproachingFromUp({ floor, direction })) return;
         }
 
         this.elevators
-            .sort((a, b) => a.requestsNumber - b.requestsNumber)[0]
+            .sort((a, b) => a.requestsCount - b.requestsCount)[0]
             .addExternalRequest({ floor, direction });
-        return;
     }
 
-    private sendToApproachingFromUp(request: ElevatorRequest): boolean {
+
+
+    private checkAndSendToApproachingFromUp(request: ElevatorRequest): boolean {
         if (this.elevators.some(e => e.currentFloor >= request.floor && e.direction == "down")) {
             this.elevators
                 .filter(e => e.currentFloor >= request.floor && e.direction == "down")
-                .sort((a, b) => a.requestsNumber - b.requestsNumber)[0]
+                .sort((a, b) => a.requestsCount - b.requestsCount)[0]
                 .addExternalRequest(request);
             return true;
         }
         return false;
     }
 
-    private sendToApproachingFromBottom(request: ElevatorRequest): boolean {
+    private checkAndSendToApproachingFromBottom(request: ElevatorRequest): boolean {
         if (this.elevators.some(e => e.currentFloor <= request.floor && e.direction == "up")) {
             this.elevators
                 .filter(e => e.currentFloor <= request.floor && e.direction == "up")
-                .sort((a, b) => a.requestsNumber - b.requestsNumber)[0]
+                .sort((a, b) => a.requestsCount - b.requestsCount)[0]
                 .addExternalRequest(request);
             return true;
         }
         return false;
     }
 
-    public update(elevatorNumber: number, currentFloor: number, targetFloor: number) {
+    public update(elevatorCount: number, currentFloor: number, targetFloor: number) {
         if (currentFloor > this.maxFloor || currentFloor < 0) {
-            throw new RangeError(`Invalid current floor (${currentFloor}) for elevator ${elevatorNumber}`)
+            throw new RangeError(`Invalid current floor (${currentFloor}) for elevator ${elevatorCount}`);
         }
         else if (targetFloor > this.maxFloor || targetFloor < 0) {
-            throw new RangeError(`Invalid target floor (${targetFloor}) for elevator ${elevatorNumber}`)
+            throw new RangeError(`Invalid target floor (${targetFloor}) for elevator ${elevatorCount}`);
         }
-        this.elevators.filter(e => e.id == elevatorNumber)[0].currentFloor = currentFloor;
-        this.elevators.filter(e => e.id == elevatorNumber)[0].targetFloor = targetFloor;
+        this.elevators.filter(e => e.id == elevatorCount)[0].currentFloor = currentFloor;
+        this.elevators.filter(e => e.id == elevatorCount)[0].targetFloor = targetFloor;
     }
 
     public step() {
-        this.elevators.forEach(e => e.timeStep())
+        this.elevators.forEach(e => e.timeStep());
     }
 
     public status(): [elevatorID: number, currentFloor: number, targetFloor: number][] {
-        return this.elevators.map(e => [e.id, e.currentFloor, e.targetFloor])
+        return this.elevators.map(e => [e.id, e.currentFloor, e.targetFloor]);
     }
 
-    
-    public getElevatorExternalRequests(elevatorId: number){
-        if(elevatorId >= this.elevatorsNumber) return [];
+
+    public getElevatorExternalRequests(elevatorId: number) {
+        if (elevatorId >= this.elevatorsCount) return [];
         return this.elevators.filter(e => e.id == elevatorId)[0].externalRequests;
     }
 
-    public getElevatorInternalRequests(elevatorId: number){
-        if(elevatorId >= this.elevatorsNumber) return [];
+    public getElevatorInternalRequests(elevatorId: number) {
+        if (elevatorId >= this.elevatorsCount) return [];
         return this.elevators.filter(e => e.id == elevatorId)[0].internalRequests;
     }
-    public hasElevatorDoorOpen(elevatorId: number){
-        if(elevatorId >= this.elevatorsNumber) return false;
+    public hasElevatorDoorOpen(elevatorId: number) {
+        if (elevatorId >= this.elevatorsCount) return false;
         return this.elevators.filter(e => e.id == elevatorId)[0].hasOpenDoor;
     }
-
-
 }
 
 
@@ -155,7 +155,7 @@ class Elevator {
         return this._id;
     }
 
-    public get requestsNumber(): number {
+    public get requestsCount(): number {
         return this.requests.length;
     }
 
@@ -167,7 +167,7 @@ class Elevator {
     }
 
     public get requests(): Array<ElevatorRequest> {
-        return [...this.externalRequests, ...this.internalRequests]
+        return [...this.externalRequests, ...this.internalRequests];
     }
 
     public pushInternalButton(floor: number) {
@@ -176,7 +176,6 @@ class Elevator {
     }
 
     public addExternalRequest(request: ElevatorRequest) {
-        console.log(request);
         this.externalRequests.push(request);
         this.setBestNextTarget();
     }
@@ -202,6 +201,10 @@ class Elevator {
         }
     }
 
+    public hasAlreadyExternalRequest(request: ElevatorRequest): boolean {
+        return this.externalRequests.some(er => er.floor == request.floor && er.direction == request.direction);
+    }
+
     private removeCurrentFloorRequests() {
         this.internalRequests = this.internalRequests.filter(request => request.floor != this.currentFloor);
         this.externalRequests = this.externalRequests.filter(request => request.floor != this.currentFloor);
@@ -214,11 +217,11 @@ class Elevator {
     private calculateNextTarget(): number {
         if (this._prevMove == "down") {
             let bestTarget = undefined;
-            if ((bestTarget = Math.max(...this.requests.map(r => r.floor).filter(el => el <= this.currentFloor))) != -Infinity) {
+            if (isFinite(bestTarget = Math.max(...this.requests.map(r => r.floor).filter(el => el <= this.currentFloor)))) {
                 return bestTarget;
             }
 
-            if ((bestTarget = Math.min(...this.requests.map(r => r.floor).filter(el => el >= this.currentFloor))) != Infinity) {
+            if (isFinite(bestTarget = Math.min(...this.requests.map(r => r.floor).filter(el => el >= this.currentFloor)))) {
                 return bestTarget;  //change direction
             }
 
@@ -229,19 +232,19 @@ class Elevator {
         }
         else {
             let bestTarget = undefined;
-            if ((bestTarget = Math.min(...this.requests.map(r => r.floor).filter(el => el >= this.currentFloor))) != Infinity) {
+            if (isFinite(bestTarget = Math.min(...this.requests.map(r => r.floor).filter(el => el >= this.currentFloor)))) {
                 return bestTarget;
             }
 
-            if ((bestTarget = Math.max(...this.requests.map(r => r.floor).filter(el => el <= this.currentFloor))) != -Infinity) {
+            if (isFinite(bestTarget = Math.max(...this.requests.map(r => r.floor).filter(el => el <= this.currentFloor)))) {
                 return bestTarget;  //change direction
             }
 
             if (this.currentFloor == 0) {
                 return undefined;
             }
-
         }
+        
         this.addExternalRequest({ floor: 0, direction: "up" });
         return this.calculateNextTarget();
     }
@@ -256,7 +259,7 @@ class Elevator {
                 this._prevMove = "down";
             }
             else {
-                console.error(`Elevator ${this.id}: direction down on level 0!`)
+                console.error(`Elevator ${this.id}: direction down on level 0!`);
             }
         } else if (this.direction == "up") {
             if (this.currentFloor < this._system.maxFloor) {
@@ -264,10 +267,10 @@ class Elevator {
                 this._prevMove = "up";
             }
             else {
-                console.error(`Elevator ${this.id}: direction up on max level!`)
+                console.error(`Elevator ${this.id}: direction up on max level!`);
             }
         }
-        else console.error("Requested move without given direction!")
+        else console.error("Requested move without given direction!");
     }
 
     private closeDoor = () => this.hasOpenDoor = false;
@@ -287,7 +290,7 @@ class ElevatorSystemVisualizer {
         margin: 10,
         leftPadding: 45,
     }
-    private colors ={
+    private colors = {
         buttonsLeft: "#5bc754",
         elevator: "#006699",
         elevatorOpen: "#4dc6ff",
@@ -298,17 +301,17 @@ class ElevatorSystemVisualizer {
 
 
     public initSystem() {
-        let elevators: number = parseInt((document.getElementById("elevatorsNumber") as HTMLInputElement).value);
-        let maxFloor: number = parseInt((document.getElementById("floorsNumber") as HTMLInputElement).value);
+        let elevators: number = parseInt((document.getElementById("elevatorsCount") as HTMLInputElement).value);
+        let maxFloor: number = parseInt((document.getElementById("floorsCount") as HTMLInputElement).value);
 
-        if(elevators<=0 || maxFloor <= 0) return;
+        if (elevators <= 0 || maxFloor <= 0) return;
 
-        let canvas : HTMLCanvasElement= document.querySelector("canvas");
-        let newCanvas : HTMLCanvasElement = canvas.cloneNode(true) as HTMLCanvasElement;
-        newCanvas.width = (this.config.width+this.config.margin)*elevators+this.config.leftPadding+10;
-        newCanvas.height = (this.config.height+this.config.margin)*(maxFloor+1)+10;
+        let canvas: HTMLCanvasElement = document.querySelector("canvas");
+        let newCanvas: HTMLCanvasElement = canvas.cloneNode(true) as HTMLCanvasElement;
+        newCanvas.width = (this.config.width + this.config.margin) * elevators + this.config.leftPadding + 10;
+        newCanvas.height = (this.config.height + this.config.margin) * (maxFloor + 1) + 10;
         canvas.parentNode.replaceChild(newCanvas, canvas);
-        
+
         this._canvas = newCanvas;
         this._context = this._canvas.getContext("2d");
 
@@ -326,17 +329,16 @@ class ElevatorSystemVisualizer {
             let { x, y } = this.getMousePosition(event);
             if (x < this.config.leftPadding) {
                 let floor: number = this.getFloorFromClick(y);
-                if(floor === undefined) return;
+                if (floor === undefined) return;
                 let dir: number = this.getHalfFloorFromClick(y);
-                console.log(dir);
                 this.makeExternalRequest(floor, dir);
                 this.renderAll();
             }
             else {
                 let floor: number = this.getFloorFromClick(y);
-                if(floor === undefined) return;
+                if (floor === undefined) return;
                 let elevatorID: number = this.getElevatorFromClick(x);
-                if(elevatorID === undefined) return;
+                if (elevatorID === undefined) return;
                 this.makeInternalRequest(elevatorID, floor);
                 this.renderAll();
             }
@@ -366,11 +368,11 @@ class ElevatorSystemVisualizer {
         this.renderButtons();
     }
 
-    private renderButtons(){
+    private renderButtons() {
         for (let floor = this._system.maxFloor; floor >= 0; floor--) {
             let y = this.getCoordinates(0, floor).y;
-            this.drawTriangle(this.colors.buttonsLeft, this.config.leftPadding*0.1, y+this.config.height / 12, this.config.leftPadding*0.8, this.config.height / 3, "up");
-            this.drawTriangle(this.colors.buttonsLeft, this.config.leftPadding*0.1, y+this.config.height*7 / 12, this.config.leftPadding*0.8, this.config.height / 3, "down");
+            this.drawTriangle(this.colors.buttonsLeft, this.config.leftPadding * 0.1, y + this.config.height / 12, this.config.leftPadding * 0.8, this.config.height / 3, "up");
+            this.drawTriangle(this.colors.buttonsLeft, this.config.leftPadding * 0.1, y + this.config.height * 7 / 12, this.config.leftPadding * 0.8, this.config.height / 3, "down");
         }
     }
 
@@ -378,30 +380,30 @@ class ElevatorSystemVisualizer {
     private renderElevators() {
         for (let [id, currentFloor, targetFloor] of this._system.status()) {
             let { x, y } = this.getCoordinates(id, currentFloor);
-            if(this._system.hasElevatorDoorOpen(id)){
+            if (this._system.hasElevatorDoorOpen(id)) {
                 this.drawRectangle(this.colors.elevatorOpen, x, y);
-            }else{
+            } else {
                 this.drawRectangle(this.colors.elevator, x, y);
             }
         }
     }
 
     private renderExternalRequests() {
-        for (let elevatorId = 0; elevatorId < this._system.elevatorsNumber; elevatorId++) {
+        for (let elevatorId = 0; elevatorId < this._system.elevatorsCount; elevatorId++) {
             this._system.getElevatorExternalRequests(elevatorId).forEach(targetFloor => {
                 let { x, y } = this.getCoordinates(elevatorId, targetFloor.floor);
                 let offset = this.config.height / 24;
                 if (targetFloor.direction == "down") {
-                    offset = this.config.height / 3
+                    offset = this.config.height / 3;
                 }
-                this.drawTriangle(this.colors.requestOutside, x+this.config.width*0.1, y + offset, this.config.width*0.8, this.config.height / 4, targetFloor.direction);
+                this.drawTriangle(this.colors.requestOutside, x + this.config.width * 0.1, y + offset, this.config.width * 0.8, this.config.height / 4, targetFloor.direction);
 
             })
         }
     }
 
     private renderInternalRequests() {
-        for (let elevatorId = 0; elevatorId < this._system.elevatorsNumber; elevatorId++) {
+        for (let elevatorId = 0; elevatorId < this._system.elevatorsCount; elevatorId++) {
             this._system.getElevatorInternalRequests(elevatorId).forEach(targetFloor => {
                 let { x, y } = this.getCoordinates(elevatorId, targetFloor.floor);
                 this.drawRectangle(this.colors.requestInside, x, y + this.config.height * 2 / 3, this.config.width, this.config.height / 3);
@@ -411,7 +413,7 @@ class ElevatorSystemVisualizer {
 
 
     private renderEmptyFloors() {
-        for (let elevatorId = 0; elevatorId < this._system.elevatorsNumber; elevatorId++) {
+        for (let elevatorId = 0; elevatorId < this._system.elevatorsCount; elevatorId++) {
             for (let floor = this._system.maxFloor; floor >= 0; floor--) {
                 let { x, y } = this.getCoordinates(elevatorId, floor);
                 this.drawRectangle(this.colors.empty, x, y);
@@ -435,19 +437,19 @@ class ElevatorSystemVisualizer {
         this._context.fillRect(x, y, width, height);
     }
 
-    private drawTriangle(color: string, x: number, y: number,width: number = this.config.width, height: number = this.config.height, direction: Direction){
+    private drawTriangle(color: string, x: number, y: number, width: number = this.config.width, height: number = this.config.height, direction: Direction) {
         this._context.beginPath();
         this._context.fillStyle = color;
-        if(direction == "down"){
-            this._context.moveTo(x,y);
-            this._context.lineTo(x+width/2,y+height);
-            this._context.lineTo(x+width,y);
+        if (direction == "down") {
+            this._context.moveTo(x, y);
+            this._context.lineTo(x + width / 2, y + height);
+            this._context.lineTo(x + width, y);
             this._context.fill();
         }
-        if(direction == "up"){
-            this._context.moveTo(x+width/2,y);
-            this._context.lineTo(x,y+height);
-            this._context.lineTo(x+width,y+height);
+        if (direction == "up") {
+            this._context.moveTo(x + width / 2, y);
+            this._context.lineTo(x, y + height);
+            this._context.lineTo(x + width, y + height);
             this._context.fill();
         }
 
@@ -462,21 +464,21 @@ class ElevatorSystemVisualizer {
 
     private getFloorFromClick(y: number): number {
         let floor = this._system.maxFloor - Math.floor(y / (this.config.height + this.config.margin));
-        if(floor > this._system.maxFloor || floor < 0){ return undefined;}
+        if (floor > this._system.maxFloor || floor < 0) { return undefined; }
         return floor;
-        
+
     }
-    
+
     private getHalfFloorFromClick(y: number): number {
         return -(y - (this._system.maxFloor - this.getFloorFromClick(y)) * (this.config.height + this.config.margin) - this.config.height / 2);
     }
 
     private getElevatorFromClick(x: number): number {
-        let elevatorNumber = Math.floor((x - this.config.leftPadding) / (this.config.width + this.config.margin));
-        if(elevatorNumber >= this._system.elevatorsNumber || elevatorNumber < 0){
+        let elevatorCount = Math.floor((x - this.config.leftPadding) / (this.config.width + this.config.margin));
+        if (elevatorCount >= this._system.elevatorsCount || elevatorCount < 0) {
             return undefined;
         }
-        return elevatorNumber;
+        return elevatorCount;
     }
 
 }

@@ -41,6 +41,9 @@ Each time system receives external request (with `pickup()`), it decides which e
 
 Such behavior prevents requests starvation. In the worst case, elevator needs to travel double of building height to response to request. 
 
+While designing the algorithm, I focused on the simplicity and elevators load balancing. The main goal was handle all requests with finite time (here - max 2x building's height). Elevators in real live also have their capacity, and without load balancing it would be possible, that only one elevator would try to handle all requests causing overload. These are the reasons, why some requests could be finished a little faster that they are.
+
+
 ## Usage manual:
 
 ![Usage manual](img/helper.png)

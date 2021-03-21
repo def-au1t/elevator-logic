@@ -11,7 +11,7 @@ var ElevatorSystem = /** @class */ (function () {
         }
         this.maxFloor = maxFloor;
     }
-    Object.defineProperty(ElevatorSystem.prototype, "elevatorsNumber", {
+    Object.defineProperty(ElevatorSystem.prototype, "elevatorsCount", {
         get: function () {
             return this.elevators.length;
         },
@@ -23,62 +23,62 @@ var ElevatorSystem = /** @class */ (function () {
     };
     ElevatorSystem.prototype.pickup = function (floor, dir) {
         var direction = dir >= 0 ? "up" : "down";
-        if (this.elevators.some(function (e) { return e.externalRequests.some(function (er) { return er.floor == floor && er.direction == direction; }); })) {
+        var request = { floor: floor, direction: direction };
+        if (this.elevators.some(function (e) { return e.hasAlreadyExternalRequest(request); })) {
             console.log("There is already similar request!");
             return;
         }
-        if (this.elevators.some(function (e) { return e.requestsNumber == 0; })) {
+        if (this.elevators.some(function (e) { return e.requestsCount == 0; })) {
             this.elevators
-                .filter(function (e) { return e.requestsNumber == 0; })[0]
+                .filter(function (e) { return e.requestsCount == 0; })[0]
                 .addExternalRequest({ floor: floor, direction: direction });
             return;
         }
         if (direction == "down") {
-            if (this.sendToApproachingFromUp({ floor: floor, direction: direction }))
+            if (this.checkAndSendToApproachingFromUp({ floor: floor, direction: direction }))
                 return;
-            if (this.sendToApproachingFromBottom({ floor: floor, direction: direction }))
+            if (this.checkAndSendToApproachingFromBottom({ floor: floor, direction: direction }))
                 return;
         }
         else {
-            if (this.sendToApproachingFromBottom({ floor: floor, direction: direction }))
+            if (this.checkAndSendToApproachingFromBottom({ floor: floor, direction: direction }))
                 return;
-            if (this.sendToApproachingFromUp({ floor: floor, direction: direction }))
+            if (this.checkAndSendToApproachingFromUp({ floor: floor, direction: direction }))
                 return;
         }
         this.elevators
-            .sort(function (a, b) { return a.requestsNumber - b.requestsNumber; })[0]
+            .sort(function (a, b) { return a.requestsCount - b.requestsCount; })[0]
             .addExternalRequest({ floor: floor, direction: direction });
-        return;
     };
-    ElevatorSystem.prototype.sendToApproachingFromUp = function (request) {
+    ElevatorSystem.prototype.checkAndSendToApproachingFromUp = function (request) {
         if (this.elevators.some(function (e) { return e.currentFloor >= request.floor && e.direction == "down"; })) {
             this.elevators
                 .filter(function (e) { return e.currentFloor >= request.floor && e.direction == "down"; })
-                .sort(function (a, b) { return a.requestsNumber - b.requestsNumber; })[0]
+                .sort(function (a, b) { return a.requestsCount - b.requestsCount; })[0]
                 .addExternalRequest(request);
             return true;
         }
         return false;
     };
-    ElevatorSystem.prototype.sendToApproachingFromBottom = function (request) {
+    ElevatorSystem.prototype.checkAndSendToApproachingFromBottom = function (request) {
         if (this.elevators.some(function (e) { return e.currentFloor <= request.floor && e.direction == "up"; })) {
             this.elevators
                 .filter(function (e) { return e.currentFloor <= request.floor && e.direction == "up"; })
-                .sort(function (a, b) { return a.requestsNumber - b.requestsNumber; })[0]
+                .sort(function (a, b) { return a.requestsCount - b.requestsCount; })[0]
                 .addExternalRequest(request);
             return true;
         }
         return false;
     };
-    ElevatorSystem.prototype.update = function (elevatorNumber, currentFloor, targetFloor) {
+    ElevatorSystem.prototype.update = function (elevatorCount, currentFloor, targetFloor) {
         if (currentFloor > this.maxFloor || currentFloor < 0) {
-            throw new RangeError("Invalid current floor (" + currentFloor + ") for elevator " + elevatorNumber);
+            throw new RangeError("Invalid current floor (" + currentFloor + ") for elevator " + elevatorCount);
         }
         else if (targetFloor > this.maxFloor || targetFloor < 0) {
-            throw new RangeError("Invalid target floor (" + targetFloor + ") for elevator " + elevatorNumber);
+            throw new RangeError("Invalid target floor (" + targetFloor + ") for elevator " + elevatorCount);
         }
-        this.elevators.filter(function (e) { return e.id == elevatorNumber; })[0].currentFloor = currentFloor;
-        this.elevators.filter(function (e) { return e.id == elevatorNumber; })[0].targetFloor = targetFloor;
+        this.elevators.filter(function (e) { return e.id == elevatorCount; })[0].currentFloor = currentFloor;
+        this.elevators.filter(function (e) { return e.id == elevatorCount; })[0].targetFloor = targetFloor;
     };
     ElevatorSystem.prototype.step = function () {
         this.elevators.forEach(function (e) { return e.timeStep(); });
@@ -87,17 +87,17 @@ var ElevatorSystem = /** @class */ (function () {
         return this.elevators.map(function (e) { return [e.id, e.currentFloor, e.targetFloor]; });
     };
     ElevatorSystem.prototype.getElevatorExternalRequests = function (elevatorId) {
-        if (elevatorId >= this.elevatorsNumber)
+        if (elevatorId >= this.elevatorsCount)
             return [];
         return this.elevators.filter(function (e) { return e.id == elevatorId; })[0].externalRequests;
     };
     ElevatorSystem.prototype.getElevatorInternalRequests = function (elevatorId) {
-        if (elevatorId >= this.elevatorsNumber)
+        if (elevatorId >= this.elevatorsCount)
             return [];
         return this.elevators.filter(function (e) { return e.id == elevatorId; })[0].internalRequests;
     };
     ElevatorSystem.prototype.hasElevatorDoorOpen = function (elevatorId) {
-        if (elevatorId >= this.elevatorsNumber)
+        if (elevatorId >= this.elevatorsCount)
             return false;
         return this.elevators.filter(function (e) { return e.id == elevatorId; })[0].hasOpenDoor;
     };
@@ -145,7 +145,7 @@ var Elevator = /** @class */ (function () {
         enumerable: false,
         configurable: true
     });
-    Object.defineProperty(Elevator.prototype, "requestsNumber", {
+    Object.defineProperty(Elevator.prototype, "requestsCount", {
         get: function () {
             return this.requests.length;
         },
@@ -178,7 +178,6 @@ var Elevator = /** @class */ (function () {
         this.setBestNextTarget();
     };
     Elevator.prototype.addExternalRequest = function (request) {
-        console.log(request);
         this.externalRequests.push(request);
         this.setBestNextTarget();
     };
@@ -201,6 +200,9 @@ var Elevator = /** @class */ (function () {
             this.closeDoor();
         }
     };
+    Elevator.prototype.hasAlreadyExternalRequest = function (request) {
+        return this.externalRequests.some(function (er) { return er.floor == request.floor && er.direction == request.direction; });
+    };
     Elevator.prototype.removeCurrentFloorRequests = function () {
         var _this = this;
         this.internalRequests = this.internalRequests.filter(function (request) { return request.floor != _this.currentFloor; });
@@ -213,10 +215,10 @@ var Elevator = /** @class */ (function () {
         var _this = this;
         if (this._prevMove == "down") {
             var bestTarget = undefined;
-            if ((bestTarget = Math.max.apply(Math, this.requests.map(function (r) { return r.floor; }).filter(function (el) { return el <= _this.currentFloor; }))) != -Infinity) {
+            if (isFinite(bestTarget = Math.max.apply(Math, this.requests.map(function (r) { return r.floor; }).filter(function (el) { return el <= _this.currentFloor; })))) {
                 return bestTarget;
             }
-            if ((bestTarget = Math.min.apply(Math, this.requests.map(function (r) { return r.floor; }).filter(function (el) { return el >= _this.currentFloor; }))) != Infinity) {
+            if (isFinite(bestTarget = Math.min.apply(Math, this.requests.map(function (r) { return r.floor; }).filter(function (el) { return el >= _this.currentFloor; })))) {
                 return bestTarget; //change direction
             }
             if (this.currentFloor == 0) {
@@ -225,10 +227,10 @@ var Elevator = /** @class */ (function () {
         }
         else {
             var bestTarget = undefined;
-            if ((bestTarget = Math.min.apply(Math, this.requests.map(function (r) { return r.floor; }).filter(function (el) { return el >= _this.currentFloor; }))) != Infinity) {
+            if (isFinite(bestTarget = Math.min.apply(Math, this.requests.map(function (r) { return r.floor; }).filter(function (el) { return el >= _this.currentFloor; })))) {
                 return bestTarget;
             }
-            if ((bestTarget = Math.max.apply(Math, this.requests.map(function (r) { return r.floor; }).filter(function (el) { return el <= _this.currentFloor; }))) != -Infinity) {
+            if (isFinite(bestTarget = Math.max.apply(Math, this.requests.map(function (r) { return r.floor; }).filter(function (el) { return el <= _this.currentFloor; })))) {
                 return bestTarget; //change direction
             }
             if (this.currentFloor == 0) {
@@ -283,8 +285,8 @@ var ElevatorSystemVisualizer = /** @class */ (function () {
         };
     }
     ElevatorSystemVisualizer.prototype.initSystem = function () {
-        var elevators = parseInt(document.getElementById("elevatorsNumber").value);
-        var maxFloor = parseInt(document.getElementById("floorsNumber").value);
+        var elevators = parseInt(document.getElementById("elevatorsCount").value);
+        var maxFloor = parseInt(document.getElementById("floorsCount").value);
         if (elevators <= 0 || maxFloor <= 0)
             return;
         var canvas = document.querySelector("canvas");
@@ -310,7 +312,6 @@ var ElevatorSystemVisualizer = /** @class */ (function () {
                 if (floor === undefined)
                     return;
                 var dir = _this.getHalfFloorFromClick(y);
-                console.log(dir);
                 _this.makeExternalRequest(floor, dir);
                 _this.renderAll();
             }
@@ -376,7 +377,7 @@ var ElevatorSystemVisualizer = /** @class */ (function () {
             });
         };
         var this_1 = this;
-        for (var elevatorId = 0; elevatorId < this._system.elevatorsNumber; elevatorId++) {
+        for (var elevatorId = 0; elevatorId < this._system.elevatorsCount; elevatorId++) {
             _loop_1(elevatorId);
         }
     };
@@ -389,12 +390,12 @@ var ElevatorSystemVisualizer = /** @class */ (function () {
             });
         };
         var this_2 = this;
-        for (var elevatorId = 0; elevatorId < this._system.elevatorsNumber; elevatorId++) {
+        for (var elevatorId = 0; elevatorId < this._system.elevatorsCount; elevatorId++) {
             _loop_2(elevatorId);
         }
     };
     ElevatorSystemVisualizer.prototype.renderEmptyFloors = function () {
-        for (var elevatorId = 0; elevatorId < this._system.elevatorsNumber; elevatorId++) {
+        for (var elevatorId = 0; elevatorId < this._system.elevatorsCount; elevatorId++) {
             for (var floor = this._system.maxFloor; floor >= 0; floor--) {
                 var _a = this.getCoordinates(elevatorId, floor), x = _a.x, y = _a.y;
                 this.drawRectangle(this.colors.empty, x, y);
@@ -450,11 +451,11 @@ var ElevatorSystemVisualizer = /** @class */ (function () {
         return -(y - (this._system.maxFloor - this.getFloorFromClick(y)) * (this.config.height + this.config.margin) - this.config.height / 2);
     };
     ElevatorSystemVisualizer.prototype.getElevatorFromClick = function (x) {
-        var elevatorNumber = Math.floor((x - this.config.leftPadding) / (this.config.width + this.config.margin));
-        if (elevatorNumber >= this._system.elevatorsNumber || elevatorNumber < 0) {
+        var elevatorCount = Math.floor((x - this.config.leftPadding) / (this.config.width + this.config.margin));
+        if (elevatorCount >= this._system.elevatorsCount || elevatorCount < 0) {
             return undefined;
         }
-        return elevatorNumber;
+        return elevatorCount;
     };
     return ElevatorSystemVisualizer;
 }());
