@@ -23,7 +23,7 @@ In the main directory:
 **Elevator system has the following main control operations:**
 
 - `pushButtonInElevator(elevator, button)` - simulates physical button push inside the elevator. 
-- `pickup(floor, direction)` - simulates physical button push on the floor. 
+- `pickup(floor, direction)` - simulates physical button push on given floor. 
 - `step()` - one time tick - elevator closes the door or moves one floor.
 
 Each time system receives external request (with `pickup()`), it decides which elevator shoud receive it. Then, the request is bound forever to chosen elevator. The elevators are chosen in the following order:
@@ -39,9 +39,9 @@ Each time system receives external request (with `pickup()`), it decides which e
 - Nearest target (internal or bound external) in opposite direction than it previously moves.
 - Ground floor, if there are no other requests.
 
-Such behavior prevents requests starvation. In the worst case, elevator needs to travel double of building height to response to request. 
+Such behavior prevents requests starvation. In the worst case scenario, elevator needs to travel double the building height to handle the request. 
 
-While designing the algorithm, I focused on the simplicity and elevators load balancing. The main goal was handle all requests with finite time (here - max 2x building's height). Elevators in real live also have their capacity, and without load balancing it would be possible, that only one elevator would try to handle all requests causing overload. These are the reasons, why some requests could be finished a little faster that they are.
+While designing the algorithm, I focused on the simplicity and elevators load balancing. The main goal was to handle all requests in finite time (here - max 2x building's height). Elevators in real live also have their capacity, and without load balancing it would be possible, that only one elevator would try to handle all requests causing overload. These are the reasons why some requests could be served a little faster that they are.
 
 
 ## Usage manual:

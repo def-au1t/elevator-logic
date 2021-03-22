@@ -19,18 +19,18 @@ var ElevatorSystem = /** @class */ (function () {
         configurable: true
     });
     ElevatorSystem.prototype.pushButtonInElevator = function (elevator, button) {
-        this.elevators.filter(function (e) { return e.id == elevator; })[0].pushInternalButton(button);
+        this.elevators.find(function (e) { return e.id == elevator; }).pushInternalButton(button);
     };
     ElevatorSystem.prototype.pickup = function (floor, dir) {
         var direction = dir >= 0 ? "up" : "down";
         var request = { floor: floor, direction: direction };
-        if (this.elevators.some(function (e) { return e.hasAlreadyExternalRequest(request); })) {
+        if (this.elevators.some(function (e) { return e.hasExternalRequest(request); })) {
             console.log("There is already similar request!");
             return;
         }
         if (this.elevators.some(function (e) { return e.requestsCount == 0; })) {
             this.elevators
-                .filter(function (e) { return e.requestsCount == 0; })[0]
+                .find(function (e) { return e.requestsCount == 0; })
                 .addExternalRequest({ floor: floor, direction: direction });
             return;
         }
@@ -70,15 +70,15 @@ var ElevatorSystem = /** @class */ (function () {
         }
         return false;
     };
-    ElevatorSystem.prototype.update = function (elevatorCount, currentFloor, targetFloor) {
+    ElevatorSystem.prototype.update = function (elevatorId, currentFloor, targetFloor) {
         if (currentFloor > this.maxFloor || currentFloor < 0) {
-            throw new RangeError("Invalid current floor (" + currentFloor + ") for elevator " + elevatorCount);
+            throw new RangeError("Invalid current floor (" + currentFloor + ") for elevator " + elevatorId);
         }
         else if (targetFloor > this.maxFloor || targetFloor < 0) {
-            throw new RangeError("Invalid target floor (" + targetFloor + ") for elevator " + elevatorCount);
+            throw new RangeError("Invalid target floor (" + targetFloor + ") for elevator " + elevatorId);
         }
-        this.elevators.filter(function (e) { return e.id == elevatorCount; })[0].currentFloor = currentFloor;
-        this.elevators.filter(function (e) { return e.id == elevatorCount; })[0].targetFloor = targetFloor;
+        this.elevators.find(function (e) { return e.id == elevatorId; }).currentFloor = currentFloor;
+        this.elevators.find(function (e) { return e.id == elevatorId; }).targetFloor = targetFloor;
     };
     ElevatorSystem.prototype.step = function () {
         this.elevators.forEach(function (e) { return e.timeStep(); });
@@ -87,19 +87,22 @@ var ElevatorSystem = /** @class */ (function () {
         return this.elevators.map(function (e) { return [e.id, e.currentFloor, e.targetFloor]; });
     };
     ElevatorSystem.prototype.getElevatorExternalRequests = function (elevatorId) {
-        if (elevatorId >= this.elevatorsCount)
-            return [];
-        return this.elevators.filter(function (e) { return e.id == elevatorId; })[0].externalRequests;
+        if (elevatorId >= this.elevatorsCount) {
+            throw new RangeError("Invalid elevatorId: " + elevatorId);
+        }
+        return this.elevators.find(function (e) { return e.id == elevatorId; }).externalRequests;
     };
     ElevatorSystem.prototype.getElevatorInternalRequests = function (elevatorId) {
-        if (elevatorId >= this.elevatorsCount)
-            return [];
-        return this.elevators.filter(function (e) { return e.id == elevatorId; })[0].internalRequests;
+        if (elevatorId >= this.elevatorsCount) {
+            throw new RangeError("Invalid elevatorId: " + elevatorId);
+        }
+        return this.elevators.find(function (e) { return e.id == elevatorId; }).internalRequests;
     };
-    ElevatorSystem.prototype.hasElevatorDoorOpen = function (elevatorId) {
-        if (elevatorId >= this.elevatorsCount)
-            return false;
-        return this.elevators.filter(function (e) { return e.id == elevatorId; })[0].hasOpenDoor;
+    ElevatorSystem.prototype.isDoorOpen = function (elevatorId) {
+        if (elevatorId >= this.elevatorsCount) {
+            throw new RangeError("Invalid elevatorId: " + elevatorId);
+        }
+        return this.elevators.find(function (e) { return e.id == elevatorId; }).hasOpenDoor;
     };
     return ElevatorSystem;
 }());
@@ -108,36 +111,16 @@ var Elevator = /** @class */ (function () {
         var _this = this;
         this.closeDoor = function () { return _this.hasOpenDoor = false; };
         this.openDoor = function () { return _this.hasOpenDoor = true; };
-        this.goDown = function () { return _this._currentFloor--; };
-        this.goUp = function () { return _this._currentFloor++; };
+        this.goDown = function () { return _this.currentFloor--; };
+        this.goUp = function () { return _this.currentFloor++; };
         this._system = system;
         this._id = id;
         this.hasOpenDoor = false;
         this.currentFloor = 0;
-        this._targetFloor = undefined;
+        this.targetFloor = undefined;
         this.externalRequests = [];
         this.internalRequests = [];
     }
-    Object.defineProperty(Elevator.prototype, "targetFloor", {
-        get: function () {
-            return this._targetFloor;
-        },
-        set: function (floor) {
-            this.targetFloor = floor;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    Object.defineProperty(Elevator.prototype, "currentFloor", {
-        get: function () {
-            return this._currentFloor;
-        },
-        set: function (floor) {
-            this._currentFloor = floor;
-        },
-        enumerable: false,
-        configurable: true
-    });
     Object.defineProperty(Elevator.prototype, "id", {
         get: function () {
             return this._id;
@@ -161,7 +144,7 @@ var Elevator = /** @class */ (function () {
             if (this.targetFloor > this.currentFloor)
                 return "up";
             if (this.targetFloor == this.currentFloor)
-                return this._prevMove;
+                return this._previousDirection;
         },
         enumerable: false,
         configurable: true
@@ -200,7 +183,7 @@ var Elevator = /** @class */ (function () {
             this.closeDoor();
         }
     };
-    Elevator.prototype.hasAlreadyExternalRequest = function (request) {
+    Elevator.prototype.hasExternalRequest = function (request) {
         return this.externalRequests.some(function (er) { return er.floor == request.floor && er.direction == request.direction; });
     };
     Elevator.prototype.removeCurrentFloorRequests = function () {
@@ -209,20 +192,17 @@ var Elevator = /** @class */ (function () {
         this.externalRequests = this.externalRequests.filter(function (request) { return request.floor != _this.currentFloor; });
     };
     Elevator.prototype.setBestNextTarget = function () {
-        this._targetFloor = this.calculateNextTarget();
+        this.targetFloor = this.calculateNextTarget();
     };
     Elevator.prototype.calculateNextTarget = function () {
         var _this = this;
-        if (this._prevMove == "down") {
+        if (this._previousDirection == "down") {
             var bestTarget = undefined;
             if (isFinite(bestTarget = Math.max.apply(Math, this.requests.map(function (r) { return r.floor; }).filter(function (el) { return el <= _this.currentFloor; })))) {
                 return bestTarget;
             }
             if (isFinite(bestTarget = Math.min.apply(Math, this.requests.map(function (r) { return r.floor; }).filter(function (el) { return el >= _this.currentFloor; })))) {
-                return bestTarget; //change direction
-            }
-            if (this.currentFloor == 0) {
-                return undefined;
+                return bestTarget; // elevator changes its direction
             }
         }
         else {
@@ -231,23 +211,24 @@ var Elevator = /** @class */ (function () {
                 return bestTarget;
             }
             if (isFinite(bestTarget = Math.max.apply(Math, this.requests.map(function (r) { return r.floor; }).filter(function (el) { return el <= _this.currentFloor; })))) {
-                return bestTarget; //change direction
-            }
-            if (this.currentFloor == 0) {
-                return undefined;
+                return bestTarget; // elevator changes its direction
             }
         }
+        if (this.currentFloor == 0) {
+            return undefined;
+        }
         this.addExternalRequest({ floor: 0, direction: "up" });
-        return this.calculateNextTarget();
+        return 0;
     };
     Elevator.prototype.moveOneFloor = function () {
-        if (this._targetFloor == undefined) {
+        if (this.targetFloor == undefined) {
             console.error("Elevator " + this._id + " should not move");
+            return;
         }
         if (this.direction == "down") {
             if (this.currentFloor > 0) {
                 this.goDown();
-                this._prevMove = "down";
+                this._previousDirection = "down";
             }
             else {
                 console.error("Elevator " + this.id + ": direction down on level 0!");
@@ -256,7 +237,7 @@ var Elevator = /** @class */ (function () {
         else if (this.direction == "up") {
             if (this.currentFloor < this._system.maxFloor) {
                 this.goUp();
-                this._prevMove = "up";
+                this._previousDirection = "up";
             }
             else {
                 console.error("Elevator " + this.id + ": direction up on max level!");
@@ -356,7 +337,7 @@ var ElevatorSystemVisualizer = /** @class */ (function () {
         for (var _i = 0, _a = this._system.status(); _i < _a.length; _i++) {
             var _b = _a[_i], id = _b[0], currentFloor = _b[1], targetFloor = _b[2];
             var _c = this.getCoordinates(id, currentFloor), x = _c.x, y = _c.y;
-            if (this._system.hasElevatorDoorOpen(id)) {
+            if (this._system.isDoorOpen(id)) {
                 this.drawRectangle(this.colors.elevatorOpen, x, y);
             }
             else {
